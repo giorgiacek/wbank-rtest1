@@ -312,9 +312,8 @@ gini_dt |>
 ```{r simulated gini graph}
 gini_dt |>
   ggplot(aes(x = year, y = gini_coefficient)) +
-  geom_line(size = 0.3) +
+  geom_line(linewidth = 0.3) +
   geom_point(size = 1) +
   theme_minimal()+
   labs(x = "Year", y = "Gini Coefficient")
-
 ```
