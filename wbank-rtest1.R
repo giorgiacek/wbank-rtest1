@@ -238,8 +238,6 @@ one_survey |>
   fmutate(bin = percentile_group)
 
 
-
-
 ### Function ----
 calculate_lorenz_data <- function(survey) {
   
@@ -261,8 +259,7 @@ calculate_lorenz_data <- function(survey) {
 }
 
 
-### Apply to data.table ----
-
+### Apply using map_df() ----
 process_survey <- function(survey, year_name) {
   numeric_year <- as.numeric(sub("Y", "", year_name))
   lorenz_results <- calculate_lorenz_data(survey)
@@ -272,7 +269,19 @@ process_survey <- function(survey, year_name) {
   return(lorenz_results)
 }
 
-
 lorenz_dt <- map_df(names(l_svy), ~process_survey(l_svy[[.x]], .x))
+
+### Apply using map() because map_df() is superseded ----
+lorenz_dt <- map(names(l_svy), ~process_survey(l_svy[[.x]], .x)) %>%
+  bind_rows()
+
+## 5.3 Lorenz Curve Graph ----
+lorenz_dt |>
+  ggplot(aes(x = cum_share_pop, y = cum_share_welfare, 
+             group = year, colour = factor(year))) +
+  geom_line(size = 0.3) +
+  theme_minimal()+
+  labs(x = "Cumulative Share of Population", y = "Cumulative Share of Welfare", color = NULL)+
+  theme(legend.position=c(0.1, 0.6))
 
 

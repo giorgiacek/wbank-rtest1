@@ -214,10 +214,64 @@ svy_dt |>
   ggplot(aes(x = year, y = headcount, 
              group = factor(pov_line),
              colour = factor(pov_line))) +
-  geom_line(size = 0.3) +
-  geom_point(linewidth = 1) +
+  geom_line(linewidth = 0.3) +
+  geom_point(size = 1) +
   theme_minimal()+
   labs(x = "Year", y = "Headcount", color = NULL)+
   theme(legend.position='bottom')
 ```
 
+### 5. Lorenz curve
+```{r simulated Lorenz}
+
+# Function ----
+calculate_lorenz_data <- function(survey) {
+  
+  survey |>
+    fmutate(cumsum_pop = fcumsum(weight),
+            sum_pop = fsum(weight),
+            cumsum_income = fcumsum(income * weight),
+            sum_income = fsum(income * weight)) |>
+    fmutate(cum_share_pop = cumsum_pop / sum_pop,
+            cum_share_income = cumsum_income / sum_income) |>
+    fmutate(percentile_group = floor(cum_share_pop * 100)) |>
+    fgroup_by(percentile_group) |>
+    fsummarise(
+      cum_share_pop = first(cum_share_pop),
+      cum_share_welfare = first(cum_share_income),
+      welfare = first(income)) |>
+    fmutate(bin = percentile_group) |>
+    fsubset(bin > 0)
+}
+
+# Adjustments 
+process_survey <- function(survey, year_name) {
+  numeric_year <- as.numeric(sub("Y", "", year_name))
+  lorenz_results <- calculate_lorenz_data(survey)
+  
+  # Add the year to the results
+  lorenz_results$year <- numeric_year
+  return(lorenz_results)
+}
+
+# Apply using map() and bind_rows()
+lorenz_dt <- map(names(l_svy), ~process_survey(l_svy[[.x]], .x)) %>%
+  bind_rows()
+
+# Plot the table
+lorenz_dt |>
+  fselect(welfare, cum_share_welfare, cum_share_pop, year, bin) |>
+  DT::datatable(
+    filter = 'top', options = list(pageLength = 10, autoWidth = TRUE)) |>
+    formatRound(c('welfare', 'cum_share_welfare', 'cum_share_pop'), 10)
+```
+
+```{r simulated lorenz graph}
+lorenz_dt |>
+  ggplot(aes(x = cum_share_pop, y = cum_share_welfare, 
+             group = year, colour = factor(year))) +
+  geom_line(size = 0.3) +
+  theme_minimal()+
+  labs(x = "Cumulative Share of Population", y = "Cumulative Share of Welfare", color = NULL)+
+  theme(legend.position=c(0.1, 0.6))
+```
