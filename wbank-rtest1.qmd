@@ -22,7 +22,7 @@ library(dplyr)
 ```
 
 ## Data
-Data for both assignment are loaded here.
+Data for both assignments are loaded here.
 ```{r data}
 tag      <- "202311081903"
 base_url <- "https://github.com/randrescastaneda/pub_data/raw/"
@@ -272,7 +272,7 @@ And this graph shows the Lorenz curve by year.
 lorenz_dt |>
   ggplot(aes(x = cum_share_pop, y = cum_share_welfare, 
              group = year, colour = factor(year))) +
-  geom_line(size = 0.3) +
+  geom_line(linewidth = 0.3) +
   theme_minimal()+
   labs(x = "Cumulative Share of Population", y = "Cumulative Share of Welfare", color = NULL)+
   theme(legend.position=c(0.1, 0.6))
@@ -281,5 +281,40 @@ lorenz_dt |>
 ### 6. Gini coefficient
 Here I calculate the Gini coefficient the Gini coefficient without using auxiliary functions.
 ```{r simulated gini}
+# Function
+calculate_gini_alternative <- function(survey) {
+  # Sort the survey data by income
+  survey <- survey[order(survey$income), ]
+  
+  # Calculate cumulative proportions
+  survey$cum_pop <- cumsum(survey$weight) / sum(survey$weight)
+  survey$cum_income <- cumsum(survey$income * survey$weight) / sum(survey$income * survey$weight)
+  
+  # Calculate Gini coefficient
+  gini <- 1 - sum((survey$cum_income[-1] + survey$cum_income[-nrow(survey)]) * diff(survey$cum_pop))
+  return(gini)
+}
+
+
+gini_results <- map(l_svy, calculate_gini_alternative)
+
+# Convert the results to a data.table with year and Gini coefficient
+gini_dt <- data.table(year = names(gini_results), gini_coefficient = unlist(gini_results))
+gini_dt$year <- as.integer(sub("Y", "", gini_dt$year))
+
+gini_dt |>
+  DT::datatable(
+    filter = 'top', options = list(pageLength = 10, autoWidth = TRUE)) |>
+    formatRound(c('gini_coefficient'), 5)
+```
+
+
+```{r simulated gini graph}
+gini_dt |>
+  ggplot(aes(x = year, y = gini_coefficient)) +
+  geom_line(size = 0.3) +
+  geom_point(size = 1) +
+  theme_minimal()+
+  labs(x = "Year", y = "Gini Coefficient")
 
 ```

@@ -284,6 +284,37 @@ lorenz_dt |>
   labs(x = "Cumulative Share of Population", y = "Cumulative Share of Welfare", color = NULL)+
   theme(legend.position=c(0.1, 0.6))
 
+## 6. Gini Coefficient ----
+calculate_gini_v1 <- function(survey) {
+  # Sort the survey data by income
+  survey <- survey[order(survey$income), ]
+  
+  # Calculate cumulative population and income
+  survey$cum_pop <- cumsum(survey$weight) / sum(survey$weight)
+  survey$cum_income <- cumsum(survey$income * survey$weight) / sum(survey$income * survey$weight)
+  
+  # Calculate Gini coefficient
+  gini <- 1 - 2 * sum(survey$cum_income * diff(c(0, survey$cum_pop)))
+  return(gini)
+}
+calculate_gini_alternative <- function(survey) {
+  # Sort the survey data by income
+  survey <- survey[order(survey$income), ]
+  
+  # Calculate cumulative proportions
+  survey$cum_pop <- cumsum(survey$weight) / sum(survey$weight)
+  survey$cum_income <- cumsum(survey$income * survey$weight) / sum(survey$income * survey$weight)
+  
+  # Calculate Gini coefficient
+  gini <- 1 - sum((survey$cum_income[-1] + survey$cum_income[-nrow(survey)]) * diff(survey$cum_pop))
+  return(gini)
+}
 
+
+gini_results <- map(l_svy, calculate_gini_alternative)
+
+# Convert the results to a data.table with year and Gini coefficient
+gini_dt <- data.table(year = names(gini_results), gini_coefficient = unlist(gini_results))
+gini_dt$year <- as.numeric(sub("Y", "", gini_dt$year)) 
 
 
