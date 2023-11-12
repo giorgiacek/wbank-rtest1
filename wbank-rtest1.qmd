@@ -55,3 +55,36 @@ wdi |>
 )) |>
   formatRound(c('mean', 'SD', 'Min', 'Max'), 0)
 ```
+
+### 2. Aggregate stats
+
+In this table, I aggregate the `lifeex`, `gdp`, and `pov_intl` variables by `region` and `date`, using the mean, standard deviation, minimum, maximum, and median.
+
+```{r basic aggregate-stats}
+#| warning: false
+
+wdi |>
+  fselect(region, date, lifeex, gdp, pov_intl, pop) |>
+  fgroup_by(region, date) |>
+  fsummarise(across(c(lifeex, gdp, pov_intl), 
+                    list(mean = fmean, sd = fsd, min = fmin, max = fmax), 
+                    w = pop),
+             pop = fsum(pop)) |>
+  pivot(ids = c('region', 'date', 'pop'),
+        values = c('lifeex_mean', 'lifeex_sd', 'lifeex_min', 'lifeex_max', 
+                 'gdp_mean', 'gdp_sd', 'gdp_min', 'gdp_max', 
+                 'pov_intl_mean', 'pov_intl_sd', 'pov_intl_min', 'pov_intl_max')) |>
+  fmutate(variable2 = str_extract(variable, ".*?(?=_[^_]+$)"),
+          estimate = str_extract(variable, "(mean|sd|min|max)$")) |>
+  fselect(-variable) |>
+  pivot(how = "wider",
+        ids = c('region', 'date', 'estimate', 'pop'),
+        names = c('variable2'),
+        values = c('value')) |>
+  fselect(estimate, region, date, pop, lifeex, gdp, pov_intl) |>
+  DT::datatable(
+    filter = 'top', options = list(
+  pageLength = 10, autoWidth = TRUE
+)) |>
+  formatRound(c('lifeex', 'gdp', 'pov_intl'), 3)
+```
