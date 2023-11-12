@@ -122,7 +122,7 @@ is_high_outlier <- function(value, mean, sd) {
 
 # 3. Find outliers
 wdi_outliers <- wdi |>
-  joyn::merge(yearly_stats, by = "date") |> # had to try your package!
+  joyn::merge(yearly_stats, by = "date", verbose = FALSE) |> # had to try your package!
   fmutate(
     hl_lifeex = ifelse(!is.na(lifeex), is_high_outlier(lifeex, mean_lifeex, sd_lifeex), NA),
     ll_lifeex = ifelse(!is.na(lifeex), is_low_outlier(lifeex, mean_lifeex, sd_lifeex), NA),
@@ -132,11 +132,19 @@ wdi_outliers <- wdi |>
     ll_gini = ifelse(!is.na(gini), is_low_outlier(gini, mean_gini, sd_gini), NA)
   )
 
+wdi_outliers |>
+  fselect(date, region, lifeex, hl_lifeex, ll_lifeex, gdp, hl_gdp, ll_gdp, gini, hl_gini, ll_gini) |>
+  DT::datatable(
+    filter = 'top', options = list(
+  pageLength = 5, autoWidth = TRUE
+)) |>
+  formatRound(c('lifeex', 'gdp', 'gini'), 3)
+
 ```
 
 And this graph shows the outliers of `lifeex` by year.
 
-```{r basic outliers graph, echo=FALSE}
+```{r basic outliers graph}
 wdi_outliers |>
   ggplot() +
   geom_point(aes(x = date, y = lifeex, color = region), size = 1) +
