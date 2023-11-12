@@ -222,6 +222,7 @@ svy_dt |>
 ```
 
 ### 5. Lorenz curve
+Here I calculate the Lorenz curve at the percentile level.
 ```{r simulated Lorenz}
 
 # Function ----
@@ -266,6 +267,7 @@ lorenz_dt |>
     formatRound(c('welfare', 'cum_share_welfare', 'cum_share_pop'), 10)
 ```
 
+And this graph shows the Lorenz curve by year.
 ```{r simulated lorenz graph}
 lorenz_dt |>
   ggplot(aes(x = cum_share_pop, y = cum_share_welfare, 
@@ -274,4 +276,10 @@ lorenz_dt |>
   theme_minimal()+
   labs(x = "Cumulative Share of Population", y = "Cumulative Share of Welfare", color = NULL)+
   theme(legend.position=c(0.1, 0.6))
+```
+
+### 6. Gini coefficient
+Here I calculate the Gini coefficient the Gini coefficient without using auxiliary functions.
+```{r simulated gini}
+
 ```
