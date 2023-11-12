@@ -1,29 +1,16 @@
----
-title: "R Skills Assessment 1"
-date: 2023-11-12
-author: "Giorgia Cecchinato"
-format:
-  html:
-    toc: true
-    toc-location: right
-    code-fold: true
----
-
-```{r setup, include=FALSE}
+# 0. Libraries ---
 library(fastverse)
 library(readr)
 library(rmarkdown)
 library(DT)
 library(stringr)
 library(ggplot2)
-library(purrr)
 library(joyn)
+library(waldo)
 library(dplyr)
-```
+library(purrr)
 
-## Data
-Data for both assignment are loaded here.
-```{r data}
+# Data ----
 tag      <- "202311081903"
 base_url <- "https://github.com/randrescastaneda/pub_data/raw/"
 data_url <- paste0(base_url, tag, "/data/Rtest1/")
@@ -33,38 +20,22 @@ wdi <-
 
 l_svy <- 
   readr::read_rds(paste0(data_url, "svy_sim_in1.Rds"))
-```
 
-## Basic Stats
 
-### 1. Summary statistics of GDP per capita by region
-
-This table shows some stats of GDP per capita by region and year. Total number of observations (not-weighted), mean, sd, min, and max.
-
-```{r basic summary-stats}
+# Basic Stats ----
+## 1. Summary Statistics ----
 wdi |> 
   fgroup_by(region, date) |>
   fsummarise(
     N = fnobs(gdp),
-    mean = fmean(gdp, w = pop, na.rm=TRUE),
-    SD = fsd(gdp, w = pop, na.rm=TRUE),
-    Min = fmin(gdp, na.rm=TRUE),
-    Max = fmax(gdp, na.rm=TRUE)
-  ) |>
-  datatable(
-    filter = 'top', options = list(
-  pageLength = 10, autoWidth = TRUE
-)) |>
-  formatRound(c('mean', 'SD', 'Min', 'Max'), 0)
-```
+    mean = round(fmean(gdp, w = pop, na.rm=TRUE)),
+    SD = round(fsd(gdp, w = pop, na.rm=TRUE)),
+    Min = round(fmin(gdp, na.rm=TRUE)),
+    Max = round(fmax(gdp, na.rm=TRUE))
+  )
 
-### 2. Aggregate stats
 
-In this table, I aggregate the `lifeex`, `gdp`, and `pov_intl` variables by `region` and `date`, using the mean, standard deviation, minimum, maximum, and median.
-
-```{r basic aggregate-stats}
-#| warning: false
-
+## 2. Aggregate Stats ----
 wdi |>
   fselect(region, date, lifeex, gdp, pov_intl, pop) |>
   fgroup_by(region, date) |>
@@ -74,8 +45,8 @@ wdi |>
              pop = fsum(pop)) |>
   pivot(ids = c('region', 'date', 'pop'),
         values = c('lifeex_mean', 'lifeex_sd', 'lifeex_min', 'lifeex_max', 
-                 'gdp_mean', 'gdp_sd', 'gdp_min', 'gdp_max', 
-                 'pov_intl_mean', 'pov_intl_sd', 'pov_intl_min', 'pov_intl_max')) |>
+                   'gdp_mean', 'gdp_sd', 'gdp_min', 'gdp_max', 
+                   'pov_intl_mean', 'pov_intl_sd', 'pov_intl_min', 'pov_intl_max')) |>
   fmutate(variable2 = str_extract(variable, ".*?(?=_[^_]+$)"),
           estimate = str_extract(variable, "(mean|sd|min|max)$")) |>
   fselect(-variable) |>
@@ -83,22 +54,17 @@ wdi |>
         ids = c('region', 'date', 'estimate', 'pop'),
         names = c('variable2'),
         values = c('value')) |>
-  fselect(estimate, region, date, pop, lifeex, gdp, pov_intl) |>
-  DT::datatable(
-    filter = 'top', options = list(
-  pageLength = 10, autoWidth = TRUE
-)) |>
-  formatRound(c('lifeex', 'gdp', 'pov_intl'), 3)
-```
+  fselect(estimate, region, date, pop, lifeex, gdp, pov_intl)
 
-### 3. Find Outliers
-Here I find the outliers of `lifeex`, `gpd`, and `gini` by year above and below 2.5 standard deviations from the mean.
+## 3.1 Find Outliers ----
+# Find the outliers of lifeex, gpd, and gini by year above and below 2.5 standard 
+# deviations from the mean. 
+# Ignore NAs in all your calculations. Remember to weigh by population.
 
-```{r basic outliers}
-#| warning: false
-#| message: false
+### Load Data to replicate----
+wdi_outliers_out<-readr::read_rds(paste0(data_url, "wdi_outliers_out.Rds"))
 
-# 1. Find yearly stats
+### Yearly stats ----
 yearly_stats <- wdi|>
   fgroup_by(date) |>
   fsummarise(
@@ -110,7 +76,7 @@ yearly_stats <- wdi|>
     sd_gini = fsd(gini, na.rm = TRUE, w = pop)
   )
 
-# 2. Create outlier function
+### Outlier Function ----
 is_low_outlier <- function(value, mean, sd) {
   threshold = mean - 2.5 * sd
   return(value < threshold)
@@ -121,9 +87,9 @@ is_high_outlier <- function(value, mean, sd) {
   return(value > threshold)
 }
 
-# 3. Find outliers
+### Calculate Outliers ----
 wdi_outliers <- wdi |>
-  joyn::merge(yearly_stats, by = "date", verbose = FALSE) |> # had to try your package!
+  joyn::merge(yearly_stats, by = "date") |> # had to try your package!
   fmutate(
     hl_lifeex = ifelse(!is.na(lifeex), is_high_outlier(lifeex, mean_lifeex, sd_lifeex), NA),
     ll_lifeex = ifelse(!is.na(lifeex), is_low_outlier(lifeex, mean_lifeex, sd_lifeex), NA),
@@ -133,19 +99,27 @@ wdi_outliers <- wdi |>
     ll_gini = ifelse(!is.na(gini), is_low_outlier(gini, mean_gini, sd_gini), NA)
   )
 
+
+### Quick Compare ----
+# Manual
+wdi_outliers_out |>
+  fsubset(country == "Angola") |>
+  fselect(date, country, gdp, gini, lifeex, pop, mean_lifeex, sd_lifeex, 
+          mean_gini, sd_gini, mean_gdp, sd_gdp, hl_lifeex, ll_lifeex, 
+          hl_gdp, ll_gdp, hl_gini, ll_gini) ->angola_old
+
+
 wdi_outliers |>
-  fselect(date, region, lifeex, hl_lifeex, ll_lifeex, gdp, hl_gdp, ll_gdp, gini, hl_gini, ll_gini) |>
-  DT::datatable(
-    filter = 'top', options = list(
-  pageLength = 5, autoWidth = TRUE
-)) |>
-  formatRound(c('lifeex', 'gdp', 'gini'), 3)
+  fsubset(country == "Angola") |>
+  fselect(date, country, gdp, gini, lifeex, pop, mean_lifeex, sd_lifeex, 
+          mean_gini, sd_gini, mean_gdp, sd_gdp, hl_lifeex, ll_lifeex, 
+          hl_gdp, ll_gdp, hl_gini, ll_gini) -> angola_new
 
-```
+# Waldo
+waldo::compare(angola_old, angola_new) 
 
-And this graph shows the outliers of `lifeex` by year.
 
-```{r basic outliers graph}
+## 3.2 Plot Lifeex Outliers ----
 wdi_outliers |>
   ggplot() +
   geom_point(aes(x = date, y = lifeex, color = region), size = 1) +
@@ -155,25 +129,42 @@ wdi_outliers |>
   theme_minimal()+
   labs(x = "Date", y = "Life Exp", color = NULL) +
   theme(legend.position=c(.5,.15), legend.direction = "horizontal")
-```
 
-## Simulated data
-
-### 4. Poverty measures
-
-Here I estimate the poverty headcount, poverty gap, and poverty severity--i.e., Foster-Greer-Thorbecke indices (FGT)--for each year using the global poverty lines of \$2.15, \$3.65, and \$6.85 in 2017 PPP prices.
-
-The FGT indices are calculated as follows:
-
-1.  **Poverty headcount**: the proportion of the population living below the poverty line.
-2.  **Poverty gap**: the mean distance below the poverty line of the poor as a proportion of the poverty line.
-3.  **Poverty severity**: the mean squared distance below the poverty line of the poor as a proportion of the poverty line.
-
-```{r simulated fgt}
-# Set poverty lines
+# Simulation Data ----
+## Load Data ----
+## 4.1 Poverty measures ----
+# Assuming that 'area' does not count?
 poverty_lines <- c(2.15, 3.65, 6.85)
 
-# Function to calculate FGT indices
+### Test with one survey ----
+one_survey <- l_svy[1]$Y2001
+
+one_survey |>
+  fmutate(
+    poor = ifelse(income <= 2.15, 1, 0),
+    poor_weight = poor * weight,
+    poor_gap = ifelse(poor == 1, 2.15 - income, 0)
+  ) |>
+  fsummarise(
+    FGT0 = fsum(poor_weight) / fsum(weight),
+    FGT1 = fsum(poor_gap * poor_weight) / (2.15 * fsum(weight)),
+    FGT2 = fsum((poor_gap / 2.15)^2 * poor_weight) /fsum(weight))
+
+### function ---
+calculate_FGT_indices <- function(survey, poverty_line) {
+  survey %>%
+    mutate(
+      poor = ifelse(income <= poverty_line, 1, 0),
+      poor_weight = poor * weight,
+      poor_gap = ifelse(poor == 1, poverty_line - income, 0)
+    ) %>%
+    summarise(
+      headcount = sum(poor_weight) / sum(weight),
+      povgap = sum(poor_gap * poor_weight) / (poverty_line * sum(weight)),
+      povseverity = sum((poor_gap / poverty_line)^2 * poor_weight) / sum(weight)
+    )
+}
+
 calculate_FGT_indices_v2 <- function(survey, poverty_line) {
   survey %>%
     mutate(
@@ -188,8 +179,7 @@ calculate_FGT_indices_v2 <- function(survey, poverty_line) {
     )
 }
 
-# Apply function using map() and bind_rows()
-svy_dt <- map(names(l_svy), ~{
+results <- map(names(l_svy), ~{
   year <- .x
   survey_data <- l_svy[[year]]
   map(poverty_lines, ~{
@@ -199,10 +189,20 @@ svy_dt <- map(names(l_svy), ~{
   }) %>% bind_rows()
 }) %>% bind_rows()
 
-# Plot the table
-svy_dt |>
-  fmutate(year = str_remove(year, "Y")) |>
-  datatable(
-  filter = 'top', options = list(pageLength = 10, autoWidth = TRUE)) |>
-  formatRound(c('headcount', 'povgap', 'povseverity'), 5)
-```
+
+
+
+### Apply as a data.table ----
+svy_dt <- data.table(year = character(), pov_line = numeric(), 
+                     headcount = numeric(), povgap = numeric(), povseverity = numeric())
+
+year_names <- names(l_svy)
+
+for (year in year_names) {
+  survey_data <- l_svy[[year]]
+  for (line in poverty_lines) {
+    fgt_results <- calculate_FGT_indices(survey_data, line)
+    svy_dt <- rbindlist(list(svy_dt, data.table(year = year, pov_line = line, fgt_results)), 
+                        use.names = TRUE)
+  }
+}
