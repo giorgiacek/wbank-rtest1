@@ -1,5 +1,5 @@
 ---
-title: "R Skills Assessment 1"
+title: "R Skills Assessment"
 date: 2023-11-12
 author: "Giorgia Cecchinato"
 format:
