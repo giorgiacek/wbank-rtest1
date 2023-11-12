@@ -1,7 +1,57 @@
 ---
-title: "wbank-rtest1"
+title: "R Skills Assessment 1"
+date: 2023-11-12
+author: "Giorgia Cecchinato"
+format:
+  html:
+    toc: true
+    toc-location: right
+    code-fold: true
 ---
 
-## Quarto
+```{r setup, include=FALSE}
+library(fastverse)
+library(readr)
+library(rmarkdown)
+library(DT)
+library(stringr)
+library(ggplot2)
+library(purrr)
+```
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+## Data
+Data for both assignment are loaded here.
+```{r data}
+tag      <- "202311081903"
+base_url <- "https://github.com/randrescastaneda/pub_data/raw/"
+data_url <- paste0(base_url, tag, "/data/Rtest1/")
+
+wdi <-
+  readr::read_rds(paste0(data_url, "wdi_in1.Rds"))
+
+l_svy <- 
+  readr::read_rds(paste0(data_url, "svy_sim_in1.Rds"))
+```
+
+## Basic Stats
+
+### 1. Summary statistics of GDP per capita by region
+
+This table shows some stats of GDP per capita by region and year. Total number of observations (not-weighted), mean, sd, min, and max.
+
+```{r basic summary-stats}
+wdi |> 
+  fgroup_by(region, date) |>
+  fsummarise(
+    N = fnobs(gdp),
+    mean = fmean(gdp, w = pop, na.rm=TRUE),
+    SD = fsd(gdp, w = pop, na.rm=TRUE),
+    Min = fmin(gdp, na.rm=TRUE),
+    Max = fmax(gdp, na.rm=TRUE)
+  ) |>
+  datatable(
+    filter = 'top', options = list(
+  pageLength = 10, autoWidth = TRUE
+)) |>
+  formatRound(c('mean', 'SD', 'Min', 'Max'), 0)
+```
