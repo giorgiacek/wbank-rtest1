@@ -17,6 +17,7 @@ library(DT)
 library(stringr)
 library(ggplot2)
 library(purrr)
+library(joyn)
 ```
 
 ## Data
@@ -88,3 +89,62 @@ wdi |>
 )) |>
   formatRound(c('lifeex', 'gdp', 'pov_intl'), 3)
 ```
+
+### 3. Find Outliers
+Here I find the outliers of `lifeex`, `gpd`, and `gini` by year above and below 2.5 standard deviations from the mean.
+
+```{r basic outliers}
+#| warning: false
+#| message: false
+
+# 1. Find yearly stats
+yearly_stats <- wdi|>
+  fgroup_by(date) |>
+  fsummarise(
+    mean_lifeex = fmean(lifeex, na.rm = TRUE, w = pop),
+    sd_lifeex = fsd(lifeex, na.rm = TRUE, w = pop),
+    mean_gdp = fmean(gdp, na.rm = TRUE, w = pop),
+    sd_gdp = fsd(gdp, na.rm = TRUE, w = pop),
+    mean_gini = fmean(gini, na.rm = TRUE, w = pop),
+    sd_gini = fsd(gini, na.rm = TRUE, w = pop)
+  )
+
+# 2. Create outlier function
+is_low_outlier <- function(value, mean, sd) {
+  threshold = mean - 2.5 * sd
+  return(value < threshold)
+}
+
+is_high_outlier <- function(value, mean, sd) {
+  threshold = mean + 2.5 * sd
+  return(value > threshold)
+}
+
+# 3. Find outliers
+wdi_outliers <- wdi |>
+  joyn::merge(yearly_stats, by = "date") |> # had to try your package!
+  fmutate(
+    hl_lifeex = ifelse(!is.na(lifeex), is_high_outlier(lifeex, mean_lifeex, sd_lifeex), NA),
+    ll_lifeex = ifelse(!is.na(lifeex), is_low_outlier(lifeex, mean_lifeex, sd_lifeex), NA),
+    hl_gdp = ifelse(!is.na(gdp), is_high_outlier(gdp, mean_gdp, sd_gdp), NA),
+    ll_gdp = ifelse(!is.na(gdp), is_low_outlier(gdp, mean_gdp, sd_gdp), NA),
+    hl_gini = ifelse(!is.na(gini), is_high_outlier(gini, mean_gini, sd_gini), NA),
+    ll_gini = ifelse(!is.na(gini), is_low_outlier(gini, mean_gini, sd_gini), NA)
+  )
+
+```
+
+And this graph shows the outliers of `lifeex` by year.
+
+```{r basic outliers graph, echo=FALSE}
+wdi_outliers |>
+  ggplot() +
+  geom_point(aes(x = date, y = lifeex, color = region), size = 1) +
+  geom_line(aes(x = date, y = mean_lifeex), linewidth = 0.5, colour = 'blue') +
+  geom_ribbon(aes(x = date, ymin = mean_lifeex - sd_lifeex*2.5, 
+                  ymax = mean_lifeex + sd_lifeex*2.5), alpha = 0.2)+
+  theme_minimal()+
+  labs(x = "Date", y = "Life Exp", color = NULL) +
+  theme(legend.position=c(.5,.15), legend.direction = "horizontal")
+```
+
