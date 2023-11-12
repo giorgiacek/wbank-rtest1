@@ -24,16 +24,18 @@ l_svy <-
 
 # Basic Stats ----
 ## 1. Summary Statistics ----
-wdi |> 
+summ <- wdi |> 
   fgroup_by(region, date) |>
   fsummarise(
     N = fnobs(gdp),
-    mean = round(fmean(gdp, w = pop, na.rm=TRUE)),
-    SD = round(fsd(gdp, w = pop, na.rm=TRUE)),
-    Min = round(fmin(gdp, na.rm=TRUE)),
-    Max = round(fmax(gdp, na.rm=TRUE))
+    Mean = fmean(gdp, w = pop, na.rm=TRUE),
+    SD = fsd(gdp, w = pop, na.rm=TRUE),
+    Min = fmin(gdp, na.rm=TRUE),
+    Max = fmax(gdp, na.rm=TRUE)
   )
 
+summ_output <- readr::read_rds(paste0(data_url, "wdi_summ_out.Rds"))
+waldo::compare(summ, summ_output) 
 
 ## 2. Aggregate Stats ----
 wdi |>

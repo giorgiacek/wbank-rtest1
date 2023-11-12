@@ -279,7 +279,7 @@ lorenz_dt |>
 ```
 
 ### 6. Gini coefficient
-Here I calculate the Gini coefficient the Gini coefficient without using auxiliary functions.
+Here I calculate the Gini coefficient without using auxiliary functions.
 ```{r simulated gini}
 # Function
 calculate_gini_alternative <- function(survey) {
