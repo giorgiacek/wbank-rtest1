@@ -206,3 +206,73 @@ for (year in year_names) {
                         use.names = TRUE)
   }
 }
+
+
+## 4.2 Poverty headcount graph ----
+svy_dt |>
+  fmutate(year = str_remove(year, "Y")) |>
+  ggplot(aes(x = year, y = headcount, 
+             group = factor(pov_line),
+             colour = factor(pov_line))) +
+  geom_line(linewidth = 0.3) +
+  geom_point(size = 1) +
+  theme_minimal()+
+  labs(x = "Year", y = "Headcount", color = NULL)+
+  theme(legend.position='bottom')
+
+## 5.1 Lorenz Curve ----
+### Test with one survey ----
+one_survey |>
+  fmutate(cumsum_pop = fcumsum(weight),
+          sum_pop = fsum(weight),
+          cumsum_income = fcumsum(income * weight),
+          sum_income = fsum(income * weight)) |>
+  fmutate(cum_share_pop = cumsum_pop / sum_pop,
+          cum_share_income = cumsum_income / sum_income) |>
+  fmutate(percentile_group = floor(cum_share_pop * 100)) |>
+  fgroup_by(percentile_group) |>
+  fsummarise(
+    cum_share_pop = first(cum_share_pop),
+    cum_share_welfare = first(cum_share_income),
+    welfare = first(income)) |>
+  fmutate(bin = percentile_group)
+
+
+
+
+### Function ----
+calculate_lorenz_data <- function(survey) {
+  
+  survey |>
+    fmutate(cumsum_pop = fcumsum(weight),
+            sum_pop = fsum(weight),
+            cumsum_income = fcumsum(income * weight),
+            sum_income = fsum(income * weight)) |>
+    fmutate(cum_share_pop = cumsum_pop / sum_pop,
+            cum_share_income = cumsum_income / sum_income) |>
+    fmutate(percentile_group = floor(cum_share_pop * 100)) |>
+    fgroup_by(percentile_group) |>
+    fsummarise(
+      cum_share_pop = first(cum_share_pop),
+      cum_share_welfare = first(cum_share_income),
+      welfare = first(income)) |>
+    fmutate(bin = percentile_group) |>
+    fsubset(bin > 0)
+}
+
+
+### Apply to data.table ----
+
+process_survey <- function(survey, year_name) {
+  numeric_year <- as.numeric(sub("Y", "", year_name))
+  lorenz_results <- calculate_lorenz_data(survey)
+  
+  # Add the year to the results
+  lorenz_results$year <- numeric_year
+  return(lorenz_results)
+}
+
+
+lorenz_dt <- map_df(names(l_svy), ~process_survey(l_svy[[.x]], .x))
+
+

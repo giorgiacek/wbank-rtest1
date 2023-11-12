@@ -169,7 +169,7 @@ The FGT indices are calculated as follows:
 2.  **Poverty gap**: the mean distance below the poverty line of the poor as a proportion of the poverty line.
 3.  **Poverty severity**: the mean squared distance below the poverty line of the poor as a proportion of the poverty line.
 
-```{r simulated fgt}
+```{r simulated FGT}
 # Set poverty lines
 poverty_lines <- c(2.15, 3.65, 6.85)
 
@@ -206,3 +206,18 @@ svy_dt |>
   filter = 'top', options = list(pageLength = 10, autoWidth = TRUE)) |>
   formatRound(c('headcount', 'povgap', 'povseverity'), 5)
 ```
+
+And this graph shows the poverty headcount by year.
+```{r simulated FGT graph}
+svy_dt |>
+  fmutate(year = str_remove(year, "Y")) |>
+  ggplot(aes(x = year, y = headcount, 
+             group = factor(pov_line),
+             colour = factor(pov_line))) +
+  geom_line(size = 0.3) +
+  geom_point(linewidth = 1) +
+  theme_minimal()+
+  labs(x = "Year", y = "Headcount", color = NULL)+
+  theme(legend.position='bottom')
+```
+
